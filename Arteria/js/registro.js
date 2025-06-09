@@ -86,12 +86,55 @@ document.getElementById("registro-form").addEventListener("submit", function(eve
   // Agregar el nuevo usuario al array
   usuarios.push(usuario);
 
+
+
   // Guardar el array de usuarios actualizado en localStorage
-  localStorage.setItem("usuarios", JSON.stringify(usuarios));
+ /* localStorage.setItem("usuarios", JSON.stringify(usuarios));
 
   mostrarAlerta("Registro exitoso", "success");
-  form.reset();
+  form.reset();*/
+
+
+
+
+
+  //------Prueba para conectar con el backend------------//
+
+  fetch("http://localhost:8080/usuarios/registro", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    nombre_usuario: nombre,
+    apellido_usuario: apellido,
+    telefono_usuario: celular,
+    correoUsuario: correo,
+    contrasenia_usuario: contraseña
+  })
+})
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("No se pudo registrar el usuario");
+    }
+    return response.text(); // O response.json() si devuelves JSON
+  })
+  .then(data => {
+    mostrarAlerta("Registro exitoso", "success");
+    form.reset();
+  })
+  .catch(error => {
+    console.error("Error:", error);
+    mostrarAlerta("Ocurrió un error al registrar el usuario", "danger");
+  });
+//------Prueba de conectar con el backend------------//
+
+
+
+
 });
+
+
 
 //Ojito
 document.querySelectorAll('.toggle-password').forEach(btn => {

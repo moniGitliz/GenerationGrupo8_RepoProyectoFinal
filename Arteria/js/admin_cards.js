@@ -1,117 +1,103 @@
-document.addEventListener('DOMContentLoaded', function() {
-  // 1. Normalización exhaustiva de datos existentes
-  const storedCards = JSON.parse(localStorage.getItem('productList')) || [];
-  
-  const normalizedCards = storedCards.map(product => {
-    const categoria = normalizarCategoria(product.category);
-    return {
-      ...product,
-      category: categoria
-    };
-  });
-  
-  localStorage.setItem('productList', JSON.stringify(normalizedCards));
+/**
+ * explor_cards.js - Lógica para la página de exploración de obras.
+ * Carga las obras desde el backend, ya sea todas o según un término de búsqueda.
+ */
 
-  // 2. Carga de tarjetas
-  const container = document.querySelector('.contenedor-obras');
-  if (!container) return;
+// El código se ejecuta cuando el DOM de la página está listo.
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Obtenemos el contenedor donde irán las tarjetas.
+    const contenedorObras = document.getElementById('contenedor-obras');
+    if (!contenedorObras) {
+        console.error("El contenedor de obras no se encontró en el DOM.");
+        return;
+    }
 
-  // Limpiar tarjetas dinámicas existentes (evita duplicados)
-  const existingDynamicCards = container.querySelectorAll('.tarjeta-link[dynamic]');
-  existingDynamicCards.forEach(card => card.remove());
+    // 2. Leemos la URL actual para ver si hay un término de búsqueda.
+    const urlParams = new URLSearchParams(window.location.search);
+    const terminoBusqueda = urlParams.get('busqueda');
 
-  // Crear nuevas tarjetas
-  normalizedCards.forEach(product => {
-    const card = createCardElement(product);
-    card.setAttribute('dynamic', 'true'); // Marcamos como dinámica
-    container.appendChild(card);
-  });
+    // 3. Decidimos qué URL del API vamos a llamar.
+    let apiUrl;
+    if (terminoBusqueda) {
+        // Si hay un término de búsqueda, usamos el endpoint de búsqueda.
+        apiUrl = `http://localhost:8080/obras/buscar?termino=${encodeURIComponent(terminoBusqueda)}`;
+        // Opcional: Podrías mostrar un título como "Resultados para: ..."
+    } else {
+        // Si no hay búsqueda, traemos todas las obras.
+        apiUrl = 'http://localhost:8080/obras';
+    }
 
-  // 3. Forzar re-filtrado si es necesario
-  if (window.location.pathname.includes('explorar_cards.html')) {
-    setTimeout(() => {
-      const event = new Event('filterUpdate');
-      document.dispatchEvent(event);
-    }, 100);
-  }
+    // 4. Llamamos al API y renderizamos los resultados.
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error en la red o en el servidor: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(obras => {
+            // La función renderObras se encargará de mostrar los datos.
+            renderObras(contenedorObras, obras);
+        })
+        .catch(error => {
+            console.error('Error al cargar las obras:', error);
+            contenedorObras.innerHTML = '<p class="text-center text-danger">No se pudieron cargar las obras. Por favor, intente más tarde.</p>';
+        });
 });
 
-// Función centralizada de normalización
-function normalizarCategoria(categoria) {
-  const estandares = {
-    'ilustracion': 'ilustracion',
-    'pintura': 'pintura',
-    'fotografia': 'fotografia',
-    'escultura': 'escultura',
-    'artesania': 'artesania',
-    'arte-textil': 'arte-textil',
-    'artesanía': 'artesania',
-    'artesanias': 'artesania',
-    'artetextil': 'arte-textil',
-    'arte textil': 'arte-textil',
-    'fotografía': 'fotografia',
-    'illustracion': 'ilustracion'
-  };
+/**
+ * Limpia el contenedor y renderiza una lista de obras.
+ * @param {HTMLElement} container - El elemento contenedor para las tarjetas.
+ * @param {Array} obras - El array de objetos de obra recibidos del API.
+ */
+function renderObras(container, obras) {
+    // Primero, limpiamos el contenedor de cualquier contenido hardcoded o anterior.
+    container.innerHTML = '';
 
-  // Normalización completa
-  let cat = (categoria || 'todos')
-    .toString()
-    .toLowerCase()
-    .trim()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Elimina acentos
-    .replace(/\s+/g, '-') // Espacios a guiones
-    .replace(/[^a-z-]/g, ''); // Solo letras y guiones
+    // Si no hay obras, mostramos un mensaje.
+    if (!obras || obras.length === 0) {
+        container.innerHTML = '<p class="text-center">No se encontraron obras que coincidan con tu búsqueda.</p>';
+        return;
+    }
 
-  return estandares[cat] || 'todos';
+    // Por cada obra en el array, creamos y añadimos su tarjeta.
+    obras.forEach(obra => {
+        const cardElement = createCardElement(obra);
+        container.appendChild(cardElement);
+    });
 }
 
-function createCardElement(product) {
-  const card = document.createElement('a');
-  card.className = 'tarjeta-link';
-  card.href = `producto.html?id=${product.id}`;
+/**
+ * Crea el elemento HTML para una sola tarjeta de obra.
+ * @param {object} obra - El objeto de obra con todos sus datos.
+ * @returns {HTMLElement} - El elemento <a> que contiene la tarjeta.
+ */
+function createCardElement(obra) {
+    const cardLink = document.createElement('a');
+    cardLink.className = 'tarjeta-link';
+    // Usamos el id real de la obra para el enlace al producto.
+    cardLink.href = `producto.html?id=${obra.idObra}`;
 
-  const cajaObra = document.createElement('div');
-  cajaObra.className = 'caja-obra';
-  
-  // Aplicar normalización definitiva
-  const categoriaNormalizada = normalizarCategoria(product.category);
-  cajaObra.setAttribute('data-categoria', categoriaNormalizada);
-  
-  // Contenido de la tarjeta
-  cajaObra.innerHTML = `
-    <img src="${product.urlImg}" alt="${product.artName}" loading="lazy">
-    <div class="texto-obra">
-      <h3>${product.artName}</h3>
-      <p>${product.artistName}</p>
-      <p class="precio-obra">$${product.price.toLocaleString('es-CO')}</p>
-      <p class="description-card">${product.artDescription}</p>
-    </div>
-  `;
+    // Formateamos el precio a pesos colombianos.
+    const precioFormateado = new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+    }).format(obra.precio_obra);
 
-  // ... después de agregar todas las tarjetas dinámicas:
-if (window.location.pathname.includes('explorar_cards.html')) {
-  setTimeout(() => {
-    const event = new Event('filterUpdate');
-    document.dispatchEvent(event);
-  }, 0); // Puedes dejarlo en 0, suficiente para esperar el DOM update
+    // Usamos la URL de la imagen principal del objeto 'imagenes'
+    const imageUrl = obra.imagenes ? obra.imagenes.imagenPrincipalUrl : 'https://via.placeholder.com/300'; // Una imagen por defecto si no hay
+
+    cardLink.innerHTML = `
+        <div class="caja-obra" data-categoria="${obra.categoria.nombreCategoria.toLowerCase()}">
+            <img src="${imageUrl}" alt="${obra.nombreObra}" loading="lazy">
+            <div class="texto-obra">
+                <h3>${obra.nombreObra}</h3>
+                <p>${obra.nombreArtista}</p>
+                <p class="precio-obra">${precioFormateado}</p>
+            </div>
+        </div>
+    `;
+    
+    return cardLink;
 }
-
-  card.appendChild(cajaObra);
-  return card;
-}
-
-// Evento personalizado para actualizar filtros
-document.addEventListener('filterUpdate', aplicarFiltroDesdeURL);
-
-
-
-
-
-
-/*//Limpiar LocalStorage (Descomentar el código para limpiar el local Storage)
-localStorage.clear();
-location.reload();
-*/
-
-
-

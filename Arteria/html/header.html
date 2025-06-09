@@ -35,13 +35,13 @@
       <section class="d-flex align-items-center gap-1 hdr-actions">
 
         <!-- Buscador desktop -->
-        <form class="input-group hdr-search d-none d-md-flex" role="search" onsubmit="return false;">
-          <button type="submit" class="input-group-text bg-white border-end-0 border" onclick="buscar()"
-            aria-label="Buscar">
-            <i class="bi bi-search"></i>
-          </button>
-          <input type="search" class="form-control border-start-0" placeholder="Buscar arte o artista">
-        </form>
+      <form class="input-group hdr-search d-none d-md-flex" role="search" id="search-form-desktop">
+        <button type="submit" class="input-group-text bg-white border-end-0 border" aria-label="Buscar">
+          <i class="bi bi-search"></i>
+        </button>
+        <input type="search" class="form-control border-start-0" placeholder="Buscar arte o artista"
+          id="search-input-desktop">
+      </form>
 
         <!-- Botón lupa mobile -->
         <button class="hdr-icon d-md-none" id="hdrMobileSearchToggle" aria-label="Buscar">
@@ -67,6 +67,7 @@
             <!--   <li><a href="../html/Studio.html">Studio</a></li>
               <li><a href="../html/ArtistProfile.html">Ver perfil de artista</a></li>
               <hr> -->
+               <li id="admin-panel-link" style="display: none;"><a href="../html/admin.html">Panel Admin</a></li>
               <li><a href="../html/Profile.html">Perfil</a></li>
               <li><a href="../html/Favorites.html">Favoritos</a></li>
               <li><a href="../html/Collections.html">Colecciones</a></li>
@@ -105,6 +106,7 @@
 
       </section>
       <!-- Buscador mobile (segunda fila) -->
+     
       <div class="hdr-mobile-search d-md-none" id="hdrMobileSearchBar">
         <form class="d-flex w-100" role="search" onsubmit="return false;">
           <input type="search" class="form-control" placeholder="Buscar arte o artista">
@@ -113,6 +115,8 @@
           </button>
         </form>
       </div>
+
+
     </section>
 
   </header>
