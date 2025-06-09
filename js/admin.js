@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------
 
 // Persistencia -----------------------------------------------------
-let productList = JSON.parse(localStorage.getItem('productList')) || [];
+//let productList = JSON.parse(localStorage.getItem('productList')) || [];
 
 // Elementos del DOM ------------------------------------------------
 const form             = document.getElementById('admin-product-form');
@@ -31,12 +31,12 @@ function showAlert (msg, type = 'success') {
 }
 
 // Lógica “Otro (especificar)” -------------------------------------
-categorySelect.addEventListener('change', () => {
-  const isOther = categorySelect.value === 'otro';
-  otherWrapper.classList.toggle('show', isOther);
-  otherInput.required = isOther;
-  if (!isOther) otherInput.value = '';
-});
+// categorySelect.addEventListener('change', () => {
+//   const isOther = categorySelect.value === 'otro';
+//   otherWrapper.classList.toggle('show', isOther);
+//   otherInput.required = isOther;
+//   if (!isOther) otherInput.value = '';
+// });
 
 // Envío de formulario ---------------------------------------------
 form.addEventListener('submit', function (event) {
@@ -53,9 +53,8 @@ form.addEventListener('submit', function (event) {
     const artDescription = document.getElementById('admin-art-description').value.trim();
 
     // Categoría (gestiona “Otro”)
-      const category = categorySelect.value === 'otro'
-                      ? otherInput.value.trim()
-                      : categorySelect.value;
+      const category = categorySelect.value;
+                      
 
 
     // Validación                              (!Thumb1-3 AGREGADO SERGIO)
@@ -66,31 +65,52 @@ form.addEventListener('submit', function (event) {
 
     // Creación del objeto para almacenar, con miniaturas
     const newProductStorage = {
-      id: crypto.randomUUID(), // AGREGADO SERGIO
-      artistName,
-      artName,
-      urlImg,
-      price,
-      artDescription,
-      category,
-      thumbnails: [thumb1, thumb2, thumb3], // AGREGADO SERGIO
+        "nombre_obra": artName,
+        "descripcion_obra": artDescription,
+        "precio_obra": price,
+        "estado_obra": true,
+        "nombre_artista": artistName,
+        "categoria": {
+          "idCategoria": Number(category)
+        },
+        "imagenes": {
+          "imagen_principal_url":urlImg,
+          "miniatura_1_url": thumb1,
+          "miniatura_2_url": thumb2,
+          "miniatura_3_url": thumb3
+        }
     };
 
-  productList.push(newProductStorage);
-  localStorage.setItem('productList', JSON.stringify(productList));
 
-
-    // --- Feedback + limpieza
-  showAlert('Producto agregado correctamente');
-  form.reset();
-  // Reestablece select
-  categorySelect.value = '';
-  otherWrapper.classList.remove('show');
-  otherInput.required = false;
-
-  // debug opcional
-  console.clear();
-  console.log('Producto agregado:', newProductStorage);
-  console.log('Lista completa:', productList);
+    fetch('http://localhost:8080/obras/crear', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newProductStorage)
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Error al guardar la obra');
+      }
+      return response.text(); // O response.text() si el back no devuelve JSON
+    })
+    .then(data => {
+      console.log('Obra guardada:', data);
+       showAlert('Producto agregado correctamente');
+       form.reset();
+      categorySelect.value = '';
+      console.log('Producto agregado:', newProductStorage);
+      setTimeout(function() {
+      location.reload();
+    }, 4000);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Hubo un problema al guardar la Obra.');
+    });
 });
+
+
+
 
