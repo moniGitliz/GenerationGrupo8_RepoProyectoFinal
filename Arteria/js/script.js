@@ -1,116 +1,114 @@
+// Obtiene obras por categoría desde el backend
+async function consultarObrasPorCategoria(idCategoria) {
+  if (!idCategoria || idCategoria === 'undefined') {
+    console.warn('Categoría inválida, se usará "0" por defecto.');
+    idCategoria = '0';
+  }
 
-// ---------- FUNCIÓN DE FILTRADO ----------
-function filtrarObras(filtro) {
-  const filtroNormalizado = normalizarCategoria(filtro);
-  //Console de prueba
-console.log('Filtro recibido:', filtro, 'Filtro normalizado:', filtroNormalizado);
+  let url = idCategoria === '0' || idCategoria === 0
+    ? 'http://localhost:8080/obras'
+    : `http://localhost:8080/obras/byId/${idCategoria}`;
 
-  const tarjetas = document.querySelectorAll('.tarjeta-link');
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Error al obtener obras');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error consultando obras:', error);
+    return null;
+  }
+}
 
-  tarjetas.forEach(card => {
-    if (filtroNormalizado === 'todos') {
-      card.style.display = 'block';
-      card.classList.remove('hidden', 'd-none');
-    } else {
-      const obra = card.querySelector('.caja-obra');
-      const categoriaObra = obra ? normalizarCategoria(obra.getAttribute('data-categoria')) : '';
-      if (categoriaObra === filtroNormalizado) {
-        card.style.display = 'block';
-        card.classList.remove('hidden', 'd-none');
-      } else {
-        card.style.display = 'none';
-        card.classList.add('hidden', 'd-none');
-      }
-    }
+// Consulta lista de categorías
+async function consultarCategorias() {
+  try {
+    const response = await fetch('http://localhost:8080/categoria');
+    if (!response.ok) throw new Error('Error al obtener categorías');
+    return await response.json();
+  } catch (error) {
+    console.error('Error consultando categorías:', error);
+    return [];
+  }
+}
+
+// Rellena select de categorías en admin.html
+async function cargarListaDesplegableCategorias() {
+  const select = document.getElementById('admin-category');
+  if (!select) return;
+
+  const categorias = await consultarCategorias();
+  categorias.forEach(cat => {
+    if (!cat.idCategoria || !cat.nombreCategoria) return;
+    const option = document.createElement('option');
+    option.value = cat.idCategoria;
+    option.textContent = cat.nombreCategoria;
+    select.appendChild(option);
   });
-
-  manejarMensajeSinResultados(
-    filtroNormalizado !== 'todos' &&
-    !Array.from(tarjetas).some(card => card.style.display === 'block')
-  );
-
-  actualizarFiltroActivo(filtroNormalizado);
 }
 
-// ---------- MANEJO DE ESTADO ACTIVO ----------
-function actualizarFiltroActivo(filtro) {
-  document.querySelectorAll('[data-filtro]').forEach(boton => {
-    const filtroBoton = normalizarCategoria(boton.getAttribute('data-filtro'));
-    boton.classList.toggle('active', filtroBoton === filtro);
-  });
-}
+// Renderiza las tarjetas de obras en el contenedor
+function renderizarObras(obras) {
+  const contenedor = document.getElementById('contenedor-obras');
+  if (!contenedor) return;
+  contenedor.innerHTML = '';
 
-// ---------- MANEJO DE URL ----------
-function actualizarURL(filtro) {
-  if (!window.location.pathname.includes('explorar_cards.html')) return;
-
-  const nuevaURL = filtro === 'todos'
-    ? 'explorar_cards.html'
-    : `explorar_cards.html?categoria=${filtro}`;
-
-  history.pushState({ filtro }, '', nuevaURL);
-}
-
-// ---------- CONTROLADOR DE EVENTOS ----------
-function manejarClickFiltro(e) {
-  const botonFiltro = e.target.closest('[data-filtro]');
-  if (!botonFiltro) return;
-
-  e.preventDefault();
-  const filtro = botonFiltro.getAttribute('data-filtro');
-
-  // Forzar redirección si no estamos en explorar_cards.html
- if (!window.location.pathname.includes('explorar_cards.html')) {
-    window.location.href = filtro === 'todos'
-      ? 'explorar_cards.html'
-      : `explorar_cards.html?categoria=${encodeURIComponent(filtro)}`;
+  if (!obras || !Array.isArray(obras) || obras.length === 0) {
+    contenedor.innerHTML = '<p>No se encontraron resultados.</p>';
     return;
   }
 
-  filtrarObras(filtro);
-  actualizarURL(filtro);
+  obras.forEach(obra => {
+    const card = document.createElement('a');
+    card.className = 'tarjeta-link';
+    card.href = `producto.html?id=${obra.id_obra}`;
+    card.innerHTML = `
+      <div class="caja-obra">
+        <img src="${obra.imagenes.imagen_principal_url}" alt="${obra.nombre_obra}" loading="lazy">
+        <div class="texto-obra">
+          <h3>${obra.nombre_obra}</h3>
+          <p>${obra.descripcion_obra}</p>
+          <p class="precio-obra">$${obra.precio_obra.toLocaleString('es-CO')}</p>
+          <p class="description-card">${obra.descripcion_obra}</p>
+        </div>
+      </div>
+    `;
+    contenedor.appendChild(card);
+  });
 }
 
-// ---------- INICIALIZACIÓN ----------
-function initFiltros() {
-  // Escuchar clicks en toda la página, para que funcione en index.html y explorar_cards.html
-  document.addEventListener('click', manejarClickFiltro);
+// Inicializa la vista de explorar_cards.html con datos desde backend
+async function initExplorarCards() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const idCategoria = urlParams.get('categoria') || '0';
 
-  // Manejar navegación atrás/adelante solo en explorar_cards.html
+  const obras = await consultarObrasPorCategoria(idCategoria);
+  if (obras !== null) renderizarObras(obras);
+}
+
+// Intercepta los clics en categorías y evita recargar si ya estás en explorar_cards.html
+document.addEventListener('click', async (e) => {
+  const link = e.target.closest('a[data-filtro]');
+  if (!link) return;
+
+  const idCategoria = link.getAttribute('data-filtro');
+
   if (window.location.pathname.includes('explorar_cards.html')) {
-    window.addEventListener('popstate', (e) => {
-      const filtro = e.state?.filtro || new URLSearchParams(window.location.search).get('categoria') || 'todos';
-      filtrarObras(filtro);
-    });
+    e.preventDefault();
+    const newUrl = `explorar_cards.html?categoria=${idCategoria}`;
+    history.pushState({ categoria: idCategoria }, '', newUrl);
+
+    const obras = await consultarObrasPorCategoria(idCategoria);
+    if (obras !== null) renderizarObras(obras);
   }
-}
-
-// ---------- MENSAJE SIN RESULTADOS (opcional, si tienes esta función) ----------
-function manejarMensajeSinResultados(sinResultados) {
-  // Aquí tu lógica para mostrar/ocultar el mensaje de "No hay resultados"
-  // Por ejemplo:
-  const mensaje = document.getElementById('mensaje-sin-resultados');
-  if (mensaje) {
-    mensaje.style.display = sinResultados ? 'block' : 'none';
-  }
-}
-
-// ---------- CARGA INICIAL ----------
-document.addEventListener('DOMContentLoaded', function() {
-  initFiltros();
-  if (!window.location.pathname.includes('explorar_cards.html')) return;
- 
-
-  // Aplicar filtro inicial desde URL
-   const filtroInicial = new URLSearchParams(window.location.search).get('categoria') || 'todos';
-    filtrarObras(filtroInicial);
-
-  document.addEventListener('filterUpdate', function() {
-  if (!window.location.pathname.includes('explorar_cards.html')) return;
-  const filtroActual = new URLSearchParams(window.location.search).get('categoria') || 'todos';
-  filtrarObras(filtroActual);
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.pathname.includes('explorar_cards.html')) {
+    initExplorarCards();
+  } else if (window.location.pathname.includes('admin.html')) {
+    cargarListaDesplegableCategorias();
+  }
 });
 
 

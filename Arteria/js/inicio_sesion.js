@@ -1,3 +1,7 @@
+const adminEmail = "arteriacol@gmail.com";
+const adminPassword = "Arteriacolaamrs2025";
+
+
 const formulario = document.querySelector('form'); 
 
 formulario.addEventListener('submit', function (e) {
@@ -6,7 +10,49 @@ formulario.addEventListener('submit', function (e) {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
 
-  // Datos del administrador (predefinido, no necesita estar en localStorage)
+  if (!email || !password) {
+    mostrarAlerta("Por favor completa todos los campos del formulario.", "warning");
+    return;
+  }
+
+
+// Enviar al backend
+  fetch("http://localhost:8080/usuarios/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      correo_usuario: email,
+      contrasenia_usuario: password
+    })
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("Credenciales inválidas");
+    }
+    return response.text();  // o response.json() si tu backend devuelve un objeto
+  })
+  .then(data => {
+    mostrarAlerta("¡Inicio de sesión exitoso!", "success");
+    localStorage.setItem('loggedIn', 'true');
+    localStorage.setItem('role', email === "arteriacol@gmail.com" ? 'admin' : 'user');
+
+    setTimeout(() => {
+      if (email === "arteriacol@gmail.com") {
+        window.location.href = 'admin.html';
+      } else {
+        window.location.href = 'index.html';
+      }
+    }, 1500);
+  })
+  .catch(error => {
+    mostrarAlerta("Correo electrónico o contraseña incorrectos.", "danger");
+  });
+
+
+
+  /*// Datos del administrador (predefinido, no necesita estar en localStorage)
   const adminEmail = "arteriacol@gmail.com";
   const adminPassword = "Arteriacolaamrs2025";
 
@@ -15,6 +61,7 @@ formulario.addEventListener('submit', function (e) {
   const usuarioAutenticado = usuariosGuardados.find(usuario =>
     usuario.correo === email && usuario.contraseña === password
   );
+  */
 
   // Alertas
   function mostrarAlerta(mensaje, tipo = "danger") {
@@ -60,6 +107,8 @@ formulario.addEventListener('submit', function (e) {
     mostrarAlerta("Correo electrónico o contraseña incorrectos.", "danger");
   }
 });
+
+
 
 // Ojito 
 document.querySelectorAll('.toggle-password').forEach(btn => {
